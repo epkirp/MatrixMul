@@ -1,0 +1,177 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+#define N 1440
+
+void square_write_file(char* fname);
+void triangle_write_file(char* fname);
+int** read_file(char* fname);
+int* square_convert_to_vec(size_t sz_b, int** A);
+int* triangle_convert_to_vec(size_t sz_b, int** A);
+void matrix_free(int **A);
+int* mulpiplication(int* A, int* B, size_t sz_b);
+
+
+int main(int argc, char**argv)
+{
+	triangle_write_file("tr_mtrx.txt");
+	int** tr_mtrx = read_file("tr_mtrx.txt");
+	square_write_file("sq_mtrx.txt");
+	int** sq_mtrx = read_file("sq_mtrx.txt");
+
+	size_t sz_b;
+	for (sz_b = 1; sz_b <= N; ++sz_b)
+	{
+		if (N%sz_b == 0)
+		{
+			FILE* dfile = fopen("dividers.txt", "a");
+			fprintf(dfile, "%d\n", sz_b);
+			printf("%d\n", sz_b);
+			int* B = triangle_convert_to_vec(sz_b, tr_mtrx);
+			int* A = square_convert_to_vec(sz_b, sq_mtrx);
+
+			int* C = mulpiplication(A, B, sz_b);
+			free(A);
+			free(B);
+			free(C);
+			fclose(dfile);
+		}
+	}
+	matrix_free(tr_mtrx);
+	matrix_free(sq_mtrx);
+	return 0;
+}
+
+void square_write_file(char* fname)
+{
+	size_t i, j;
+	int** A = (int**)malloc(N * sizeof(int *));
+	for (i = 0; i < N; i++)
+		A[i] = (int *)malloc(N * sizeof(int));
+
+	for (i = 0; i < N; ++i)
+		for (j = 0; j < N; ++j)
+			A[i][j] = rand() % 10;
+
+	FILE* file = fopen(fname, "w");
+
+	for (i = 0; i<N; i++)
+	{
+		for (j = 0; j<N; ++j)
+			fprintf(file, "%4d", A[i][j]);
+		fprintf(file, "\n");
+	}
+	fclose(file);
+	matrix_free(A);
+
+}
+
+void triangle_write_file(char* fname)
+{
+	size_t i, j;
+	int** A = (int**)malloc(N * sizeof(int *));
+	for (i = 0; i < N; ++i)
+		A[i] = (int *)malloc(N * sizeof(int));
+
+	for (i = 0; i < N; ++i)
+		for (j = 0; j < N; ++j)
+		{
+			if (i >= j) A[i][j] = rand() % 10;
+			else A[i][j] = 0;
+		}
+
+	FILE* file = fopen(fname, "w");
+
+	for (i = 0; i<N; i++)
+	{
+		for (j = 0; j<N; ++j)
+			fprintf(file, "%4d", A[i][j]);
+		fprintf(file, "\n");
+	}
+	fclose(file);
+	matrix_free(A);
+
+}
+
+void matrix_free(int **A)
+{
+	size_t i;
+	for (i = 0; i < N; i++) {
+		free(A[i]);
+	}
+	free(A);
+}
+
+int* triangle_convert_to_vec(size_t sz_b, int** A)
+{
+	size_t S = N / sz_b;
+	int* vec = malloc((S + 1)*S / 2 * sz_b*sz_b * sizeof(int));
+	size_t i = 0, j = 0, t0 = 0, t1 = 0, k = 0;
+
+	for (t0 = 0; t0 < S; ++t0)
+		for (t1 = 0; t1 <= t0; ++t1)
+			for (i = 0; i < sz_b; ++i)          		
+for (j = 0; j < sz_b; ++j)      //
+					vec[k++] = A[i + t0*sz_b][j + t1*sz_b];
+	return vec;
+}
+
+int* square_convert_to_vec(size_t sz_b, int** A)
+{
+	int* vec = malloc(N*N * sizeof(int));
+	size_t i = 0, j = 0, t = 0, k = 0; 
+	for (t = 0; t< N / sz_b; ++t)
+		for (i = 0; i < N; ++i)
+			for (j = 0; j < sz_b; ++j)
+				vec[k++] = A[i][j + t*sz_b];
+	return vec;
+}
+
+int** read_file(char* fname)
+{
+	size_t i, j;
+	int** A = (int**)malloc(N * sizeof(int *));
+	for (i = 0; i < N; i++)
+		A[i] = (int *)malloc(N * sizeof(int));
+
+	FILE *file;
+	file = fopen(fname, "r");
+
+	for (i = 0; i<N; ++i)
+		for (j = 0; j<N; ++j)
+			if (!feof(file)) fscanf(file, "%d", &A[i][j]);
+	fclose(file);
+	return A;
+}
+
+int* mulpiplication(int* A, int* B, size_t sz_b)
+{
+	int* C = calloc(N*N, sizeof(int));
+
+	size_t i, j, k;
+	double t1, t2;
+	t1 = clock();
+	size_t S = N / sz_b;
+	for (i = 0; i<S; ++i)
+		for (j = 0; j<S; ++j)
+			for (k = j; k<S; ++k)
+			{
+				int* a = A + k*N*sz_b + i*sz_b*sz_b, 
+                         *b = B + ((k + 1)*k / 2 + j)*sz_b*sz_b,
+				*c = C + j*N*sz_b + i*sz_b*sz_b;
+
+				size_t ii, jj, kk;
+				for (ii = 0; ii < sz_b; ++ii)
+					for (jj = 0; jj < sz_b; ++jj)
+						for (kk = 0; kk < sz_b; ++kk)
+							c[ii*sz_b + jj] += a[ii*sz_b + kk] * b[kk*sz_b + jj]; 
+			}
+	t2 = clock();
+
+	FILE* file = fopen("time.txt", "a");
+	fprintf(file, "%f\n", (t2 - t1) / CLK_TCK);
+	fclose(file);
+
+	return C;
+}
